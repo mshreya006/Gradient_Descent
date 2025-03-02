@@ -2,84 +2,158 @@ import numpy as np
 import matplotlib.pyplot as plt
 import time
 
-#Generate data 
-x = np.linspace(0, 10, 100)
-m1_true, m2_true = 3, 2
-m0 = 1
-noise = np.random.normal(0, 1, len(x))
-y = m1_true * x**2 + m2_true * x + noise  
+# Function for generating synthetic quadratic data
+def generate_data(x, m1, m2, m0):
+    """
+    Generate quadratic data with additive Gaussian noise.
+    
+    Args:
+        x (np.ndarray): Input data points.
+        m1 (float): Coefficient for x^2 term.
+        m2 (float): Coefficient for x term.
+        m0 (float): Constant offset.
+        
+    Returns:
+        np.ndarray: Quadratic data with noise.
+    """
+    noise = np.random.normal(0, 1, len(x))
+    return m1 * x**2 + m2 * x + m0 + noise
 
-plt.scatter(x, y, label='Data')
-plt.title("Generated Data plot")
-plt.legend()
-plt.show()
-
-#Loss Function
+# Function for calculating loss values
 def loss_function(m1, m2, m0, x, y):
-    y_pred = m1*x**2 + m2*x + m0
+    """
+    Compute the Mean Squared Error (MSE) loss for quadratic predictions.
+    
+    Args:
+        m1, m2, m0 (float): Parameters for the quadratic model.
+        x (np.ndarray): Input data points.
+        y (np.ndarray): True output data points.
+        
+    Returns:
+        float: MSE loss value.
+    """
+    y_pred = m1 * x**2 + m2 * x + m0
     return np.mean((y - y_pred)**2)
 
-#Linear Search
-m1_range = np.linspace(-5, 5, 21)
-best_m1_ls, min_loss = None, float('inf')
-start_ls = time.time()
-for m1 in m1_range:
-    curr_loss = loss_function(m1, m2_true, m0, x, y)
-    if curr_loss < min_loss:
-        min_loss = curr_loss
-        best_m1_ls = m1
-end_ls = time.time()
-print(f"Linear Search: Best m1 = {best_m1_ls}, Loss = {min_loss:.6f}, Time = {end_ls - start_ls:.4f}s")
-
-#Gradient Descent for Quadratic Function
-def gradients(m1, m2, m0, x, y):
-    y_pred = m1*x**2 + m2*x + m0
+# Function for computing gradient values
+def compute_gradients(m1, m2, m0, x, y):
+    """
+    Compute gradients of the MSE loss with respect to m1, m2, and m0.
+    
+    Args:
+        m1, m2, m0 (float): Parameters for the quadratic model.
+        x (np.ndarray): Input data points.
+        y (np.ndarray): True output data points.
+        
+    Returns:
+        tuple: Gradients (grad_m1, grad_m2, grad_m0) for each parameter.
+    """
+    y_pred = m1 * x**2 + m2 * x + m0
     error = y - y_pred
-    grad_m1 = (-2/len(x)) * np.sum(x**2 * error)
-    grad_m2 = (-2/len(x)) * np.sum(x * error)
-    return grad_m1, grad_m2
+    n = len(x)
+    grad_m1 = (-2 / n) * np.sum(x**2 * error)
+    grad_m2 = (-2 / n) * np.sum(x * error)
+    grad_m0 = (-2 / n) * np.sum(error)
+    return grad_m1, grad_m2, grad_m0
 
-start_gd = time.time()
-np.random.seed(0)
-m1_gd, m2_gd = np.random.rand(), np.random.rand()
-lr = 1e-5
-epochs = 500
-loss_values = []
-prev_loss = float('inf')
-
-for i in range(epochs):
-    g1, g2 = gradients(m1_gd, m2_gd, m0, x, y)
-    m1_gd -= lr * g1
-    m2_gd -= lr * g2
+# Function for implementing linear search
+def linear_search(m1_range, m2, m0, x, y):
+    """
+    Perform a linear search over a range of m1 values to minimize the loss.
     
-    curr_loss = loss_function(m1_gd, m2_gd, m0, x, y)
-    loss_values.append(curr_loss)
+    Args:
+        m1_range (np.ndarray): Array of candidate m1 values.
+        m2 (float): Fixed parameter m2.
+        m0 (float): Fixed parameter m0.
+        x (np.ndarray): Input data points.
+        y (np.ndarray): True output data points.
+        
+    Returns:
+        tuple: Best m1 value and its corresponding loss.
+    """
+    losses = list(map(lambda m1: loss_function(m1, m2, m0, x, y), m1_range))
+    best_index = np.argmin(losses)
+    return m1_range[best_index], losses[best_index]
+
+# Function for iterative gradient descent
+def gradient_descent(x, y, lr=1e-4, max_epochs=500, stop_threshold=1e-2, patience=10):
+    """
+    Iterative gradient descent to optimize m1, m2, m0.
     
-    #Early stopper
-    if abs(prev_loss - curr_loss) < 1e-6:
-        print(f"Converged at epoch {i+1}")
-        break
-    prev_loss = curr_loss
+    Args:
+        x, y (np.ndarray): Data points.
+        lr (float): Learning rate.
+        max_epochs (int): Maximum iterations.
+        stop_threshold (float): Convergence threshold for loss.
+        patience (int): Number of epochs to wait for convergence before stopping.
+        
+    Returns:
+        tuple: Optimized parameters (m1, m2, m0) and loss history.
+    """
+    np.random.seed(42)
+    m1, m2, m0 = np.random.rand(), np.random.rand(), np.random.rand()
+    loss_history = [loss_function(m1, m2, m0, x, y)]
+    patience_counter = 0
+    
+    for epoch in range(1, max_epochs + 1):
+        # Compute gradients
+        g1, g2, g0 = compute_gradients(m1, m2, m0, x, y)
+        
+        # Update parameters
+        m1 -= lr * g1
+        m2 -= lr * g2
+        m0 -= lr * g0
+        
+        # Compute new loss
+        current_loss = loss_function(m1, m2, m0, x, y)
+        loss_history.append(current_loss)
+        
+        # Early stopping based on loss change
+        if abs(loss_history[-2] - current_loss) < stop_threshold:
+            patience_counter += 1
+            if patience_counter >= patience:
+                print(f"Converged after {epoch} epochs")
+                break
+        else:
+            patience_counter = 0
+    
+    return m1, m2, m0, loss_history
 
-end_gd = time.time()
-print(f"Gradient Descent: Best m1 = {m1_gd:.4f} "
-      f"Loss = {loss_values[-1]:.6f}, Time = {end_gd - start_gd:.4f}s")
+def main():
+    # Generate synthetic quadratic data
+    x = np.linspace(0, 10, 100)
+    m1_true, m2_true, m0_true = 3, 2, 1
+    y = generate_data(x, m1_true, m2_true, m0_true)
+    
+    # Linear search for best m1 (functional style)
+    m1_range = np.linspace(-5, 5, 21)
+    best_m1_ls, min_loss_ls = linear_search(m1_range, m2_true, m0_true, x, y)
+    print(f"Linear Search: Best m1 = {best_m1_ls}, Loss = {min_loss_ls:.6f}")
+    
+    # Gradient descent using iterative approach
+    m1_gd, m2_gd, m0_gd, loss_history = gradient_descent(x, y)
+    print(f"Gradient Descent: Best m1 = {m1_gd:.4f}, Loss = {loss_history[-1]:.6f}")
+    
+    # Plot linear search loss vs. m1 values
+    plt.figure()
+    ls_losses = list(map(lambda m1: loss_function(m1, m2_true, m0_true, x, y), m1_range))
+    plt.plot(m1_range, ls_losses, label='Linear Search Loss')
+    plt.axvline(best_m1_ls, color='g', linestyle='--', label=f'Best m1 (LS): {best_m1_ls}')
+    plt.axvline(m1_gd, color='b', linestyle='--', label=f'Best m1 (GD): {m1_gd:.4f}')
+    plt.xlabel('m1 values')
+    plt.ylabel('Loss')
+    plt.title('Linear Search Loss')
+    plt.legend()
+    plt.show()
+    
+    # Plot gradient descent loss convergence
+    plt.figure()
+    plt.plot(loss_history, color='b', label='Gradient Descent Loss')
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.title('Gradient Descent Convergence')
+    plt.legend()
+    plt.show()
 
-# Plot LS loss
-plt.plot(m1_range, [loss_function(m1, m2_true, m0, x, y) for m1 in m1_range])
-plt.axvline(best_m1_ls, color='g', linestyle='--', label=f'Best m1 (LS): {best_m1_ls}')
-plt.axvline(m1_gd, color='b', linestyle='--', label=f'Best m1 (GD): {m1_gd:.4f}')
-plt.xlabel('m1 values')
-plt.ylabel('Loss')
-plt.title('Linear Search Loss')
-plt.legend()
-plt.show()
-
-
-# Plot GD loss
-plt.plot(loss_values, marker='o', color='b', label='GD Loss')
-plt.xlabel('Epoch')
-plt.ylabel('Loss')
-plt.title('Gradient Descent Convergence (No Intercept)')
-plt.legend()
-plt.show()
+if __name__ == "__main__":
+    main()
