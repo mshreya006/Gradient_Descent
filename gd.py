@@ -14,11 +14,12 @@ plt.title("Generated Data plot")
 plt.legend()
 plt.show()
 
-#Linear search
+#Loss Function
 def loss_function(m1, m2, m0, x, y):
     y_pred = m1*x**2 + m2*x + m0
     return np.mean((y - y_pred)**2)
 
+#Linear Search
 m1_range = np.linspace(-5, 5, 21)
 best_m1_ls, min_loss = None, float('inf')
 start_ls = time.time()
@@ -63,6 +64,17 @@ for i in range(epochs):
 end_gd = time.time()
 print(f"Gradient Descent: Best m1 = {m1_gd:.4f} "
       f"Loss = {loss_values[-1]:.6f}, Time = {end_gd - start_gd:.4f}s")
+
+# Plot LS loss
+plt.plot(m1_range, [loss_function(m1, m2_true, m0, x, y) for m1 in m1_range])
+plt.axvline(best_m1_ls, color='g', linestyle='--', label=f'Best m1 (LS): {best_m1_ls}')
+plt.axvline(m1_gd, color='b', linestyle='--', label=f'Best m1 (GD): {m1_gd:.4f}')
+plt.xlabel('m1 values')
+plt.ylabel('Loss')
+plt.title('Linear Search Loss')
+plt.legend()
+plt.show()
+
 
 # Plot GD loss
 plt.plot(loss_values, marker='o', color='b', label='GD Loss')
