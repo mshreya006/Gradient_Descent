@@ -126,13 +126,17 @@ def main():
     y = generate_data(x, m1_true, m2_true, m0_true)
     
     # Linear search for best m1 (functional style)
+    start_time = time.perf_counter()
     m1_range = np.linspace(-5, 5, 21)
     best_m1_ls, min_loss_ls = linear_search(m1_range, m2_true, m0_true, x, y)
-    print(f"Linear Search: Best m1 = {best_m1_ls}, Loss = {min_loss_ls:.6f}")
+    ls_time = time.perf_counter() - start_time
+    print(f"Linear Search: Best m1 = {best_m1_ls}, Loss = {min_loss_ls:.6f}, Time = {ls_time:.6f}")
     
     # Gradient descent using iterative approach
+    start_time_gd = time.perf_counter()
     m1_gd, m2_gd, m0_gd, loss_history = gradient_descent(x, y)
-    print(f"Gradient Descent: Best m1 = {m1_gd:.4f}, Loss = {loss_history[-1]:.6f}")
+    gd_time = time.perf_counter() - start_time_gd
+    print(f"Gradient Descent: Best m1 = {m1_gd:.4f}, Loss = {loss_history[-1]:.6f}, Time = {gd_time:.6f}")
     
     # Plot linear search loss vs. m1 values
     plt.figure()
