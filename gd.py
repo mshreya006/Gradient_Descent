@@ -142,6 +142,7 @@ def main():
     plt.axvline(m1_gd, color='b', linestyle='--', label=f'Best m1 (GD): {m1_gd:.4f}')
     plt.xlabel('m1 values')
     plt.ylabel('Loss')
+    plt.grid(True)
     plt.title('Linear Search Loss')
     plt.legend()
     plt.show()
